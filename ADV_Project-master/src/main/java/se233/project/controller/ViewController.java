@@ -8,19 +8,24 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.Pane;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
-import net.lingala.zip4j.exception.ZipException;
+import net.lingala.zip4j.ZipFile;
 import se233.project.Launcher;
-import se233.project.Model.FileDirectories;
-import se233.project.Model.FileExtension;
+import se233.project.model.TargzExtractor;
+import se233.project.model.ZipExtractor;
+import se233.project.model.FileDirectories;
+import se233.project.model.FileExtension;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ViewController {
     private FileDirectories fileDirectories = new FileDirectories();
     private ArrayList<String> fileArrayList = new ArrayList<>();
+    private ExecutorService executorService;
     @FXML
     private Pane dropPane;
     @FXML
@@ -42,9 +47,9 @@ public class ViewController {
 
         extensionChoiceBox.setItems(FXCollections.observableList(Arrays.asList(FileExtension.ZIP,FileExtension.TARGZ)));
         extensionChoiceBox.setValue(FileExtension.ZIP);
-        directoryTextField.setText("D:\\Code\\ADV_Project\\testfolder");
+        directoryTextField.setText(System.getProperty("user.dir"));
 
-        extensionChoiceBox.getSelectionModel().selectedIndexProperty().addListener((observableValue, number, t1) -> {
+        /*extensionChoiceBox.getSelectionModel().selectedIndexProperty().addListener((observableValue, number, t1) -> {
             if (t1.equals(1)) {
                 passwordField.setEditable(false);
                 passwordField.setOpacity(0.5);
@@ -52,7 +57,7 @@ public class ViewController {
                 passwordField.setEditable(true);
                 passwordField.setOpacity(1);
             }
-        });
+        });*/
 
         dropPane.setOnDragOver(dragEvent -> {
             Dragboard dragboard = dragEvent.getDragboard();
@@ -137,7 +142,8 @@ public class ViewController {
                 }
                 else {
                     CompressController.compressToTargz(fileDirectories.getFileList(),
-                            directoryTextField.getText() + "\\" + fileNameTextField.getText()+".tar.gz");
+                            directoryTextField.getText() + "\\" + fileNameTextField.getText()+".tar.gz",
+                            passwordField.getText());
                 }
             } catch (IllegalStateException e) {
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -162,18 +168,28 @@ public class ViewController {
             } else {
                 System.out.println("Can");
             }
+            executorService = Executors.newFixedThreadPool(fileDirectories.getFileList().size());
             fileDirectories.getFileList().forEach(s -> {
-                try {
-                    if (s.contains(".zip"))
-                        ExtractController.extractZip(s, directoryTextField.getText(), passwordField.getText());
-                    else
-                        ExtractController.extractTargz(s, directoryTextField.getText());
-                } catch (ZipException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (s.contains(".zip")) {
+                    String temp = "";
+                    try (ZipFile zipFile = new ZipFile(new File(s))) {
+                        if (zipFile.isEncrypted()) {
+                            TextInputDialog inputDialog = new TextInputDialog();
+                            inputDialog.setTitle("Enter password");
+                            inputDialog.setHeaderText("Enter password for " + zipFile.getFile().getName());
+                            inputDialog.showAndWait();
+                            temp = inputDialog.getResult();
+                        }
+                    } catch (IOException e) {
+                            e.printStackTrace();
+                    }
+                    executorService.submit(new ZipExtractor(s, directoryTextField.getText(), temp));
+                }
+                else {
+                    executorService.submit(new TargzExtractor(s, directoryTextField.getText()));
                 }
             });
+            executorService.shutdown();
         });
     }
 }

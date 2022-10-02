@@ -1,6 +1,5 @@
 package se233.project.controller;
 
-import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import net.lingala.zip4j.ZipFile;
@@ -60,7 +59,21 @@ public class CompressController {
         }
         zipFile.close();
     }
-    public static void compressToTargz(List<String> fileDirectories, String directory) throws IOException {
+    public static void encryptZip(File file, String directory, String password) throws IOException {
+        ZipFile zipFile;
+        ZipParameters zipParameters = new ZipParameters();
+        zipParameters.setCompressionMethod(CompressionMethod.DEFLATE);
+        zipParameters.setCompressionLevel(CompressionLevel.NORMAL);
+        zipParameters.setEncryptFiles(true);
+        zipParameters.setEncryptionMethod(EncryptionMethod.AES);
+        zipParameters.setAesKeyStrength(AesKeyStrength.KEY_STRENGTH_256);
+        zipFile = new ZipFile(directory, password.toCharArray());
+        zipFile.setRunInThread(true);
+        zipFile.addFile(file, zipParameters);
+        zipFile.close();
+    }
+
+    public static void compressToTargz(List<String> fileDirectories, String directory, String password) throws IOException {
         File newFile = new File(directory);
         FileOutputStream fileOutputStream = new FileOutputStream(newFile);
         GzipCompressorOutputStream gzipCompressorOutputStream = new GzipCompressorOutputStream(fileOutputStream);

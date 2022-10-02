@@ -1,4 +1,4 @@
-package se233.project.Model;
+package se233.project.model;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -34,6 +34,9 @@ public class FileDirectories {
         return observableFileList;
     }
 
+    /*
+        Check if the file directories in the list contains .zip or .tar.gz. If a file without the extension is not present, return false.
+     */
     public boolean isExtractable() {
         isExtractable = true;
         fileDirectories.forEach(s -> {
